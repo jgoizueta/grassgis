@@ -24,8 +24,16 @@ from Ruby scripts.
 Example:
 
 ```ruby
+require 'grassgis'
+
+configuration = {
+  gisbase: '/usr/local/Cellar/grass-70/7.0.0/grass-7.0.0',
+  location: 'world'
+}
+
 GrassGis.session configuration do
-    r.resamp.stats '-n', input: "map1@mapset1", output: "map2"
+  r.resamp.stats '-n', input: "map1@mapset1", output: "map2"
+  puts g.list('vect').output
 end
 ```
 
