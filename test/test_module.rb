@@ -28,4 +28,20 @@ class TestModule < Minitest::Test
     cmd = r.colors map: 'a_map', rules: color_table
     assert_equal "r.colors map=a_map rules=- << EOF\n#{color_table}\nEOF\n", cmd.to_s(with_input: true)
   end
+
+  def test_command_with_indented_stdin
+    if OS.windows?
+      skip
+      return
+    end
+    color_table = %{
+      0% black
+      50% white
+      100% black
+    }
+    unindented = "0% black\n50% white\n100% black"
+    r = GrassGis::Module.new('r', configuration: { dry: true })
+    cmd = r.colors map: 'a_map', rules: color_table
+    assert_equal "r.colors map=a_map rules=- << EOF\n#{unindented}\nEOF\n", cmd.to_s(with_input: true)
+  end
 end

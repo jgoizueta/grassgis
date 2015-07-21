@@ -40,7 +40,7 @@ module GrassGis
               when String
                 if value.include?("\n")
                   raise "Cannot pass multiple options through STDIN" if stdin
-                  stdin = value
+                  stdin = Support.unindent(value)
                   value = "-"
                   input stdin
                 end
