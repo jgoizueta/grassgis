@@ -1,5 +1,8 @@
 # GrassGis
 
+[![Gem Version](https://badge.fury.io/rb/grassgis.svg)](http://badge.fury.io/rb/grassgis)
+[![Build Status](https://travis-ci.org/jgoizueta/grassgis.svg)](https://travis-ci.org/jgoizueta/grassgis)
+
 Support for scripting GRASS with Ruby.
 
 ## Installation
