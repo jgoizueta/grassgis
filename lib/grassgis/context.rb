@@ -102,7 +102,26 @@ module GrassGis
       end
     end
 
-    private
+    # Evaluate a block of code in the context of a GRASS session
+    #
+    # Useful to pass a GRASS context around and use it to execute
+    # GRASS commands, e.g.:
+    #
+    #     def helper(grass, ...)
+    #        # can invoke GRASS commands using grass:
+    #        grass.g.region res: 10
+    #        # Or use a session block to abbreviate typing:
+    #        grass.session do
+    #          g.region res: 10
+    #          ...
+    #        end
+    #     end
+    #
+    def session(&blk)
+      instance_eval(&blk)
+    end
+
+  private
 
     def bool_var(value)
       value ? 'TRUE' : 'FALSE'
@@ -151,7 +170,7 @@ module GrassGis
   def self.session(config, &blk)
     context = Context.new(config)
     context.allocate
-    context.instance_eval(&blk)
+    context.session &blk
   ensure
     context.dispose if context
   end
