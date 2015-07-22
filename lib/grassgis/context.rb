@@ -30,6 +30,40 @@ module GrassGis
       end
     end
 
+   # Commands executed in the session are kept in the +history+ array
+   #
+   #    GrassGis.session config do
+   #       g.region res: 10
+   #       g.region res: 20
+   #       g.region res: 30
+   #       puts history[-3] # => "g.region res=10"
+   #       puts history[-2] # => "g.region res=20"
+   #       puts history[-1] # => "g.region res=30"
+   #       puts history[-2].output
+   #    end
+   #
+   attr_reader :history
+
+   # Last command executed in the session (history[-1])
+   def last
+     history.last
+   end
+
+   # Array of commands that resulted in error in the session
+   def errors
+     history.select { |cmd| cmd.status_value != 0 }
+   end
+
+   # Did last command exit with error status
+   def error?
+     last.status_value != 0
+   end
+
+   # Output of the last command executed
+   def output
+     last.output
+   end
+
    def insert_path(var, *paths)
      @original_env[var] = ENV[var]
      if File::ALT_SEPARATOR
@@ -80,6 +114,7 @@ module GrassGis
      end
      insert_path 'PATH', *paths
      insert_path 'MANPATH', File.join(@config[:gisbase], 'man')
+     @history = @config[:history] = []
    end
 
     def dispose

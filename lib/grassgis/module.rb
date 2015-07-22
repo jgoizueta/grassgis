@@ -15,6 +15,7 @@ module GrassGis
       @id = id.to_s
       @parent = options[:parent]
       @configuration = options[:configuration] || {}
+      @history = @configuration[:history] || []
     end
 
     def name
@@ -52,6 +53,7 @@ module GrassGis
           end
         end
       end
+      @history << cmd
       cmd.run unless @configuration[:dry]
       cmd
     end

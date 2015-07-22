@@ -52,4 +52,27 @@ class TestContext < Minitest::Test
     refute File.exists?(session_gisrc)
   end
 
+  def test_session_history
+    history = nil
+    last = nil
+    history_size_at_2 = history_size_at_4 = nil
+    GrassGis.session dummy_config.merge(dry: true) do
+      g.region res: 10
+      g.region res: 20
+      history_size_at_2 = self.history.size
+      g.region res: 30
+      g.region res: 40
+      history_size_at_4 = self.history.size
+      history = self.history.dup
+      last = self.last.dup
+    end
+    assert_equal 2, history_size_at_2
+    assert_equal 4, history_size_at_4
+    assert_equal 'g.region res=10', history[-4].to_s
+    assert_equal 'g.region res=20', history[-3].to_s
+    assert_equal 'g.region res=30', history[-2].to_s
+    assert_equal 'g.region res=40', history[-1].to_s
+    assert_equal 'g.region res=40', last.to_s
+  end
+
 end

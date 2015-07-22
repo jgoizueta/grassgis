@@ -33,7 +33,8 @@ configuration = {
 
 GrassGis.session configuration do
   r.resamp.stats '-n', input: "map1@mapset1", output: "map2"
-  puts g.list('vect').output
+  g.list 'vect'
+  puts output # output of last command
 end
 ```
 
