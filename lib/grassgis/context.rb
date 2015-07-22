@@ -117,6 +117,11 @@ module GrassGis
     #        end
     #     end
     #
+    #     GrassGis.session ... do
+    #       helper seld, ...
+    #       ...
+    #     end
+    #
     def session(&blk)
       instance_eval(&blk)
     end
