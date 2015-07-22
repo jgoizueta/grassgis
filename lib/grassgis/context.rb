@@ -30,92 +30,92 @@ module GrassGis
       end
     end
 
-   # Commands executed in the session are kept in the +history+ array
-   #
-   #    GrassGis.session config do
-   #       g.region res: 10
-   #       g.region res: 20
-   #       g.region res: 30
-   #       puts history[-3] # => "g.region res=10"
-   #       puts history[-2] # => "g.region res=20"
-   #       puts history[-1] # => "g.region res=30"
-   #       puts history[-2].output
-   #    end
-   #
-   attr_reader :history
+    # Commands executed in the session are kept in the +history+ array
+    #
+    #    GrassGis.session config do
+    #       g.region res: 10
+    #       g.region res: 20
+    #       g.region res: 30
+    #       puts history[-3] # => "g.region res=10"
+    #       puts history[-2] # => "g.region res=20"
+    #       puts history[-1] # => "g.region res=30"
+    #       puts history[-2].output
+    #    end
+    #
+    attr_reader :history
 
-   # Last command executed in the session (history[-1])
-   def last
-     history.last
-   end
+    # Last command executed in the session (history[-1])
+    def last
+      history.last
+    end
 
-   # Array of commands that resulted in error in the session
-   def errors
-     history.select { |cmd| cmd.status_value != 0 }
-   end
+    # Array of commands that resulted in error in the session
+    def errors
+      history.select { |cmd| cmd.status_value != 0 }
+    end
 
-   # Did last command exit with error status
-   def error?
-     last.status_value != 0
-   end
+    # Did last command exit with error status
+    def error?
+      last.status_value != 0
+    end
 
-   # Output of the last command executed
-   def output
-     last.output
-   end
+    # Output of the last command executed
+    def output
+      last.output
+    end
 
-   def insert_path(var, *paths)
-     @original_env[var] = ENV[var]
-     if File::ALT_SEPARATOR
-       paths = paths.map { |path| path.gsub(File::SEPARATOR, File::ALT_SEPARATOR) }
-     end
-     paths << ENV[var] if ENV[var]
-     ENV[var] = paths.join(File::PATH_SEPARATOR)
-   end
+    def insert_path(var, *paths)
+      @original_env[var] = ENV[var]
+      if File::ALT_SEPARATOR
+        paths = paths.map { |path| path.gsub(File::SEPARATOR, File::ALT_SEPARATOR) }
+      end
+      paths << ENV[var] if ENV[var]
+      ENV[var] = paths.join(File::PATH_SEPARATOR)
+    end
 
-   def replace_var(var, value)
-     @original_env[var] = ENV[var]
-     ENV[var] = value
-   end
+    def replace_var(var, value)
+      @original_env[var] = ENV[var]
+      ENV[var] = value
+    end
 
-   def allocate
-     @gisrc = Tempfile.new('gisrc')
-     @gisrc.puts "LOCATION_NAME: #{@config[:location]}"
-     @gisrc.puts "GISDBASE: #{@config[:gisdbase]}"
-     @gisrc.puts "MAPSET: #{@config[:mapset]}"
-     @gisrc.puts "GUI: #{@config[:gui]}"
-     @gisrc.close
+    def allocate
+      @gisrc = Tempfile.new('gisrc')
+      @gisrc.puts "LOCATION_NAME: #{@config[:location]}"
+      @gisrc.puts "GISDBASE: #{@config[:gisdbase]}"
+      @gisrc.puts "MAPSET: #{@config[:mapset]}"
+      @gisrc.puts "GUI: #{@config[:gui]}"
+      @gisrc.close
 
-     @original_env = {}
+      @original_env = {}
 
-     replace_var 'GISRC', @gisrc.path
-     replace_var 'GISBASE', @config[:gisbase]
-     replace_var 'GRASS_VERSION', @config[:version]
-     replace_var 'GRASS_MESSAGE_FORMAT', @config[:message_format].to_s
-     replace_var 'GRASS_TRUECOLOR', bool_var(@config[:true_color])
-     replace_var 'GRASS_TRANSPARENT', bool_var(@config[:transparent])
-     replace_var 'GRASS_PNG_AUTO_WRITE', bool_var(@config[:png_auto_write])
-     replace_var 'GRASS_GNUPLOT', @config[:gnuplot]
+      replace_var 'GISRC', @gisrc.path
+      replace_var 'GISBASE', @config[:gisbase]
+      replace_var 'GRASS_VERSION', @config[:version]
+      replace_var 'GRASS_MESSAGE_FORMAT', @config[:message_format].to_s
+      replace_var 'GRASS_TRUECOLOR', bool_var(@config[:true_color])
+      replace_var 'GRASS_TRANSPARENT', bool_var(@config[:transparent])
+      replace_var 'GRASS_PNG_AUTO_WRITE', bool_var(@config[:png_auto_write])
+      replace_var 'GRASS_GNUPLOT', @config[:gnuplot]
 
-     paths = ['bin', 'scripts']
-     if OS.windows?
-       # paths << 'lib'
-       paths.unshift 'lib'
-     else
-       insert_path 'LD_LIBRARY_PATH', File.join(@config[:gisbase], 'lib')
-       ENV['GRASS_LD_LIBRARY_PATH'] = ENV['LD_LIBRARY_PATH']
-     end
-     paths = paths.map { |path| File.join(@config[:gisbase], path) }
-     if OS.windows?
-       osgeo4w_dir = ENV['OSGEO4W_ROOT'] || "C:\\OSGeo4W"
-       if File.directory?(osgeo4w_dir)
-         paths << File.join(osgeo4w_dir, 'bin')
-       end
-     end
-     insert_path 'PATH', *paths
-     insert_path 'MANPATH', File.join(@config[:gisbase], 'man')
-     @history = @config[:history] = []
-   end
+      paths = ['bin', 'scripts']
+      if OS.windows?
+        # paths << 'lib'
+        paths.unshift 'lib'
+      else
+        insert_path 'LD_LIBRARY_PATH', File.join(@config[:gisbase], 'lib')
+        ENV['GRASS_LD_LIBRARY_PATH'] = ENV['LD_LIBRARY_PATH']
+      end
+      paths = paths.map { |path| File.join(@config[:gisbase], path) }
+      if OS.windows?
+        osgeo4w_dir = ENV['OSGEO4W_ROOT'] || "C:\\OSGeo4W"
+        if File.directory?(osgeo4w_dir)
+          paths << File.join(osgeo4w_dir, 'bin')
+        end
+      end
+      insert_path 'PATH', *paths
+      insert_path 'MANPATH', File.join(@config[:gisbase], 'man')
+      @history = @config[:history] = []
+    end
 
     def dispose
       @gisrc.unlink if @gisrc
