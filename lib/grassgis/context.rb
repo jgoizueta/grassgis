@@ -64,20 +64,6 @@ module GrassGis
       last.output
     end
 
-    def insert_path(var, *paths)
-      @original_env[var] = ENV[var]
-      if File::ALT_SEPARATOR
-        paths = paths.map { |path| path.gsub(File::SEPARATOR, File::ALT_SEPARATOR) }
-      end
-      paths << ENV[var] if ENV[var]
-      ENV[var] = paths.join(File::PATH_SEPARATOR)
-    end
-
-    def replace_var(var, value)
-      @original_env[var] = ENV[var]
-      ENV[var] = value
-    end
-
     def allocate
       @gisrc = Tempfile.new('gisrc')
       @gisrc.puts "LOCATION_NAME: #{@config[:location]}"
@@ -165,6 +151,20 @@ module GrassGis
 
     def bool_var(value)
       value ? 'TRUE' : 'FALSE'
+    end
+
+    def insert_path(var, *paths)
+      @original_env[var] = ENV[var]
+      if File::ALT_SEPARATOR
+        paths = paths.map { |path| path.gsub(File::SEPARATOR, File::ALT_SEPARATOR) }
+      end
+      paths << ENV[var] if ENV[var]
+      ENV[var] = paths.join(File::PATH_SEPARATOR)
+    end
+
+    def replace_var(var, value)
+      @original_env[var] = ENV[var]
+      ENV[var] = value
     end
 
   end
