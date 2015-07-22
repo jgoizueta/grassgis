@@ -40,6 +40,14 @@ end
 
 ## Roadmap
 
+* Write the executed command history to the location's +.bash_history+
+  or to another file specified in the session configuration.
+* Log GRASS command output / error output
+* Method to clean GRASS temporaries ($GISBASE/etc/clean_temp), or do
+  it automatically when disposing the session.
+
+### GRASS cooking DSL
+
 Create a DSL to define GRASS processing recipes.
 
 It should handle errors gracefully during recipe execution,
