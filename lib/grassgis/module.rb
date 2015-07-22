@@ -16,6 +16,7 @@ module GrassGis
       @parent = options[:parent]
       @configuration = options[:configuration] || {}
       @history = @configuration[:history] || []
+      @errors = @configuration[:errors] || :raise
     end
 
     def name
@@ -54,7 +55,16 @@ module GrassGis
         end
       end
       @history << cmd
-      cmd.run unless @configuration[:dry]
+      unless @configuration[:dry]
+        run_options = {}
+        if @errors == :console
+          run_options[:error_output] = :console
+        else
+          run_options[:error_output] = :separate
+        end
+        cmd.run run_options
+      end
+      GrassGis.error cmd, @errors
       cmd
     end
 

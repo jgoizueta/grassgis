@@ -75,4 +75,22 @@ class TestContext < Minitest::Test
     assert_equal 'g.region res=40', last.to_s
   end
 
+  def test_session_raise_errors
+    test_context = self
+    GrassGis.session dummy_config do
+      test_context.assert_raises {
+        g.invalid.command map: 'xxx'
+      }
+    end
+  end
+
+  def test_session_quiet_errors
+    test_context = self
+    GrassGis.session dummy_config.merge(errors: :quiet) do
+      test_context.refute error?
+      g.invalid.command map: 'xxx'
+      test_context.assert error?
+    end
+  end
+
 end

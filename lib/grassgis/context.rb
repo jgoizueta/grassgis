@@ -22,6 +22,9 @@ module GrassGis
       config[:png_auto_write] = true unless config.has_key?(:png_auto_write)
       config[:gnuplot] ||= 'gnuplot -persist'
       config[:gui] ||= 'wxpython'
+
+      config[:errors] ||= :raise
+
       @config = config
 
       locals = config[:locals] || {}
@@ -51,17 +54,26 @@ module GrassGis
 
     # Array of commands that resulted in error in the session
     def errors
-      history.select { |cmd| cmd.status_value != 0 }
+      history.select { |cmd| GrassGis.error?(cmd) }
     end
 
     # Did last command exit with error status
     def error?
-      last.status_value != 0
+      GrassGis.error? last
+    end
+
+    def error_info
+      GrassGis.error_info last
     end
 
     # Output of the last command executed
     def output
       last.output
+    end
+
+    # Standar error output of last command executed
+    def error_output
+      last.error_output
     end
 
     def allocate
@@ -207,12 +219,54 @@ module GrassGis
   #          r.resamp.stats '-n', input: this.input, output: context.output
   #     end
   #
+  # Other pararameters:
+  #
+  #   :errors to define the behaviour when a GRASS command fails:
+  #   * :raise is the default and raises on errors
+  #   * :console shows standar error output of commands
+  #   * :quiet error output is retained but not shown
+  #
+  #   If :error is anything other than :raise, it is up to the user
+  #   to check each command for errors. With the :console option
+  #   the standar error output of commands is sent to the console
+  #   and is not accessible through the command's error_output method.
+  #
   def self.session(config, &blk)
     context = Context.new(config)
     context.allocate
     context.session &blk
   ensure
     context.dispose if context
+  end
+
+  class Error < StandardError
+  end
+
+  def self.error?(command)
+    command && (!!command.error || (command.status_value && command.status_value != 0))
+  end
+
+  def error_info(command)
+    if command
+      if command.error
+        command.error.to_s
+      elsif (command.status_value && command.status_value != 0)
+        info = "Exit code #{command.status_value}\n"
+        info << command.error_output if command.error_output
+      end
+    end
+  end
+
+  def self.error(command, error_mode = :raise)
+    if command
+      if error_mode == :raise
+        if command.error
+          raise command.error
+        elsif (command.status_value && command.status_value != 0)
+          raise Error.new, error_info(command)
+        end
+      end
+    end
   end
 
 end
