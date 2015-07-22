@@ -9,10 +9,9 @@ end
 
 def dummy_config
   {
-    gisbase: '/usr/local/Cellar/grass-70/7.0.0/grass-7.0.0',
+    gisbase: '/nonexistent/path',
     gisdbase: '/grassdata',
     location: 'world',
     mapset: 'PERMANENT',
   }
 end
-  

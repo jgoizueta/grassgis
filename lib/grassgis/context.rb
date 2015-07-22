@@ -10,12 +10,18 @@ module GrassGis
       # apply configuration defaults
       config[:gisdbase] ||= File.join(ENV['HOME'], 'grassdata')
       config[:mapset]  ||= ENV['USER']
-      config[:version] ||= File.read(File.join(config[:gisbase], 'etc', 'VERSIONNUMBER')).split.first
+      unless config[:version]
+        version_file = File.join(config[:gisbase], 'etc', 'VERSIONNUMBER')
+        if File.exists?(version_file)
+          config[:version] = File.read(version_file).split.first
+        end
+      end
       config[:message_format] ||= 'plain'
       config[:true_color] = true unless config.has_key?(:true_color)
       config[:transparent] = true unless config.has_key?(:transparent)
       config[:png_auto_write] = true unless config.has_key?(:png_auto_write)
       config[:gnuplot] ||= 'gnuplot -persist'
+      config[:gui] ||= 'wxpython'
       @config = config
 
       locals = config[:locals] || {}
@@ -24,50 +30,65 @@ module GrassGis
       end
     end
 
+   def insert_path(var, *paths)
+     @original_env[var] = ENV[var]
+     if File::ALT_SEPARATOR
+       paths = paths.map { |path| path.gsub(File::SEPARATOR, File::ALT_SEPARATOR) }
+     end
+     paths << ENV[var] if ENV[var]
+     ENV[var] = paths.join(File::PATH_SEPARATOR)
+   end
+
+   def replace_var(var, value)
+     @original_env[var] = ENV[var]
+     ENV[var] = value
+   end
+
    def allocate
      @gisrc = Tempfile.new('gisrc')
      @gisrc.puts "LOCATION_NAME: #{@config[:location]}"
      @gisrc.puts "GISDBASE: #{@config[:gisdbase]}"
      @gisrc.puts "MAPSET: #{@config[:mapset]}"
+     @gisrc.puts "GUI: #{@config[:gui]}"
      @gisrc.close
-     ENV['GISRC'] = @gisrc.path
-     ENV['GISBASE'] = @config[:gisbase]
-     ENV['GRASS_VERSION'] = @config[:version]
-     ENV['GRASS_MESSAGE_FORMAT'] = @config[:message_format].to_s
-     ENV['GRASS_TRUECOLOR'] = bool_var(@config[:true_color])
-     ENV['GRASS_TRANSPARENT'] = bool_var(@config[:transparent])
-     ENV['GRASS_PNG_AUTO_WRITE'] = bool_var(@config[:png_auto_write])
-     ENV['GRASS_GNUPLOT'] = @config[:gnuplot]
-     @path = ENV['PATH']
-     paths = []
-     paths << File.join(@config[:gisbase], 'bin')
-     paths << File.join(@config[:gisbase], 'scripts')
-     paths << @path
-     ENV['PATH'] = paths.join(File::PATH_SEPARATOR)
-     @ld_path = ENV['LD_LIBRARY_PATH']
-     ld_path = File.join(@config[:gisbase], 'lib')
-     if @ld_path
-       ENV['LD_LIBRARY_PATH'] = [ld_path, @ld_path].join(File::PATH_SEPARATOR)
+
+     @original_env = {}
+
+     replace_var 'GISRC', @gisrc.path
+     replace_var 'GISBASE', @config[:gisbase]
+     replace_var 'GRASS_VERSION', @config[:version]
+     replace_var 'GRASS_MESSAGE_FORMAT', @config[:message_format].to_s
+     replace_var 'GRASS_TRUECOLOR', bool_var(@config[:true_color])
+     replace_var 'GRASS_TRANSPARENT', bool_var(@config[:transparent])
+     replace_var 'GRASS_PNG_AUTO_WRITE', bool_var(@config[:png_auto_write])
+     replace_var 'GRASS_GNUPLOT', @config[:gnuplot]
+
+     paths = ['bin', 'scripts']
+     if OS.windows?
+       # paths << 'lib'
+       paths.unshift 'lib'
      else
-       ENV['LD_LIBRARY_PATH'] = ld_path
+       insert_path 'LD_LIBRARY_PATH', File.join(@config[:gisbase], 'lib')
+       ENV['GRASS_LD_LIBRARY_PATH'] = ENV['LD_LIBRARY_PATH']
      end
-     ENV['GRASS_LD_LIBRARY_PATH'] = ENV['LD_LIBRARY_PATH']
-     @man_path = ENV['MANPATH']
-     man_path = File.join(@config[:gisbase], 'man')
-     if @man_path
-       ENV['MANPATH'] = [man_path, @man_path].join(File::PATH_SEPARATOR)
-     else
-       ENV['MANPATH'] = man_path
+     paths = paths.map { |path| File.join(@config[:gisbase], path) }
+     if OS.windows?
+       osgeo4w_dir = ENV['OSGEO4W_ROOT'] || "C:\\OSGeo4W"
+       if File.directory?(osgeo4w_dir)
+         paths << File.join(osgeo4w_dir, 'bin')
+       end
      end
+     insert_path 'PATH', *paths
+     insert_path 'MANPATH', File.join(@config[:gisbase], 'man')
    end
 
     def dispose
       @gisrc.unlink if @gisrc
       @gisrc = nil
-      ENV['PATH'] = @path if @path
-      @path = nil
-      ENV['LD_LIBRARY_PATH'] = @ld_path
-      ENV['MANPATH'] = @man_path
+      @original_env.each do |var, value|
+        ENV[var] = value
+      end
+      @original_env = {}
     end
 
     # setup access to the root modules in the context
@@ -132,7 +153,7 @@ module GrassGis
     context.allocate
     context.instance_eval(&blk)
   ensure
-    context.dispose
+    context.dispose if context
   end
 
 end
