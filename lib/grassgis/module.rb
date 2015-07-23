@@ -14,9 +14,7 @@ module GrassGis
     def initialize(id, options = {})
       @id = id.to_s
       @parent = options[:parent]
-      @configuration = options[:configuration] || {}
-      @history = @configuration[:history] || []
-      @errors = @configuration[:errors] || :raise
+      @context = options[:context]
     end
 
     def name
@@ -54,22 +52,14 @@ module GrassGis
           end
         end
       end
-      @history << cmd
-      unless @configuration[:dry]
-        run_options = {}
-        if @errors == :console
-          run_options[:error_output] = :console
-        else
-          run_options[:error_output] = :separate
-        end
-        cmd.run run_options
+      if @context
+        @context.execute cmd
       end
-      GrassGis.error cmd, @errors
       cmd
     end
 
     def method_missing(method, *args)
-      m = Module.new(method, parent: self, configuration: @configuration)
+      m = Module.new(method, parent: self, context: @context)
       if args.size > 0
         m.run *args
       else

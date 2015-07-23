@@ -17,13 +17,14 @@ module GrassGis
         end
       end
       config[:message_format] ||= 'plain'
-      config[:true_color] = true unless config.has_key?(:true_color)
-      config[:transparent] = true unless config.has_key?(:transparent)
-      config[:png_auto_write] = true unless config.has_key?(:png_auto_write)
+      config[:true_color] = true unless config.key?(:true_color)
+      config[:transparent] = true unless config.key?(:transparent)
+      config[:png_auto_write] = true unless config.key?(:png_auto_write)
       config[:gnuplot] ||= 'gnuplot -persist'
       config[:gui] ||= 'wxpython'
 
       config[:errors] ||= :raise
+      config[:echo] = :commands unless config.key?(:echo)
 
       @config = config
 
@@ -76,6 +77,10 @@ module GrassGis
       last.error_output
     end
 
+    def configuration
+      @config
+    end
+
     def allocate
       @gisrc = Tempfile.new('gisrc')
       @gisrc.puts "LOCATION_NAME: #{@config[:location]}"
@@ -112,7 +117,7 @@ module GrassGis
       end
       insert_path 'PATH', *paths
       insert_path 'MANPATH', File.join(@config[:gisbase], 'man')
-      @history = @config[:history] = []
+      @history = []
     end
 
     def dispose
@@ -129,7 +134,7 @@ module GrassGis
       define_method root_module.to_sym do
         var_name = "@#{root_module}"
         m = instance_variable_get(var_name)
-        m ||= Module.new(root_module, configuration: @config)
+        m ||= Module.new(root_module, context: self)
         instance_variable_set var_name, m
         m
       end
@@ -159,7 +164,56 @@ module GrassGis
       instance_eval(&blk)
     end
 
+    def dry?
+      @config[:dry]
+    end
+
+    def execute(cmd)
+      @history << cmd
+      if @config[:echo]
+        puts cmd.to_s(with_input: false)
+      end
+      log_file = @config[:log] || @config[:history]
+      if log_file
+        log_timestamp log_file
+        log log_file, cmd.to_s(with_input: true)
+      end
+      unless dry?
+        cmd.run error_output: :reparate
+      end
+      if cmd.output
+        puts cmd.output if @config[:echo] == :output
+      end
+      handle_errors cmd
+      cmd
+    end
+
   private
+
+    def log_timestamp(file)
+      log file, Time.now
+    end
+
+    def log(file, message)
+      if file && message
+        File.open(file, 'a') do |log_file|
+          log_file.puts message
+        end
+      end
+    end
+
+    def handle_errors(cmd)
+      GrassGis.error cmd, @config[:errors]
+      if @config[:echo] == :output || @config[:log] || @config[:errors] == :console
+        error_info = GrassGis.error_info(cmd)
+        if error_info
+          if @config[:errors] == :console || @config[:echo] == :output
+            STDERR.puts error_info
+          end
+          log @config[:log], error_info
+        end
+      end
+    end
 
     def bool_var(value)
       value ? 'TRUE' : 'FALSE'
@@ -221,15 +275,27 @@ module GrassGis
   #
   # Other pararameters:
   #
-  #   :errors to define the behaviour when a GRASS command fails:
-  #   * :raise is the default and raises on errors
-  #   * :console shows standar error output of commands
-  #   * :quiet error output is retained but not shown
+  # :errors to define the behaviour when a GRASS command fails:
+  # * :raise is the default and raises on errors
+  # * :console shows standar error output of commands
+  # * :quiet error output is retained but not shown
   #
-  #   If :error is anything other than :raise, it is up to the user
-  #   to check each command for errors. With the :console option
-  #   the standar error output of commands is sent to the console
-  #   and is not accessible through the command's error_output method.
+  # If :errors is anything other than :raise, it is up to the user
+  # to check each command for errors. With the :console option
+  # the standar error output of commands is sent to the console
+  # and is not accessible through the command's error_output method.
+  #
+  # :log is used to define a loggin file where executed commands
+  # and its output is written.
+  #
+  # :history is used to define a loggin file where only
+  # executed commands are written.
+  #
+  # :echo controls what is echoed to the standard output
+  # and can be one of the following options:
+  # * :commands show all executed commands (the default)
+  # * :output show the output of commands too
+  # * false don't echo anything
   #
   def self.session(config, &blk)
     context = Context.new(config)
@@ -246,10 +312,11 @@ module GrassGis
     command && (!!command.error || (command.status_value && command.status_value != 0))
   end
 
-  def error_info(command)
+  def self.error_info(command)
     if command
       if command.error
-        command.error.to_s
+        info = "Error (#{command.error.class}):\n"
+        info << command.error.to_s
       elsif (command.status_value && command.status_value != 0)
         info = "Exit code #{command.status_value}\n"
         info << command.error_output if command.error_output

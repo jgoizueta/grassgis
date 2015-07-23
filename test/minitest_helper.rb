@@ -13,5 +13,9 @@ def dummy_config
     gisdbase: '/grassdata',
     location: 'world',
     mapset: 'PERMANENT',
-  }
+  }.merge(
+    # Test options
+    dry: true,  # don't execute commands
+    echo: false # don't output to the console
+  )
 end

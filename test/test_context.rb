@@ -3,7 +3,7 @@ require 'minitest_helper'
 class TestContext < Minitest::Test
   def test_session_commands
     cmd = nil
-    GrassGis.session dummy_config.merge(dry: true) do
+    GrassGis.session dummy_config do
       cmd = r.resamp.stats input: "map1", output: "map2"
     end
     assert_equal "r.resamp.stats input=#{quoted_name('map1')} output=#{quoted_name('map2')}", cmd.to_s
@@ -11,7 +11,7 @@ class TestContext < Minitest::Test
 
   def test_session_locals
     value = nil
-    GrassGis.session dummy_config.merge(dry: true, locals: { x: 11 }) do
+    GrassGis.session dummy_config.merge(locals: { x: 11 }) do
       value = x
     end
     assert_equal 11, value
@@ -56,7 +56,7 @@ class TestContext < Minitest::Test
     history = nil
     last = nil
     history_size_at_2 = history_size_at_4 = nil
-    GrassGis.session dummy_config.merge(dry: true) do
+    GrassGis.session dummy_config do
       g.region res: 10
       g.region res: 20
       history_size_at_2 = self.history.size
@@ -77,7 +77,7 @@ class TestContext < Minitest::Test
 
   def test_session_raise_errors
     test_context = self
-    GrassGis.session dummy_config do
+    GrassGis.session dummy_config.merge(dry: false) do
       test_context.assert_raises {
         g.invalid.command map: 'xxx'
       }
@@ -86,11 +86,42 @@ class TestContext < Minitest::Test
 
   def test_session_quiet_errors
     test_context = self
-    GrassGis.session dummy_config.merge(errors: :quiet) do
+    GrassGis.session dummy_config.merge(dry: false, errors: :quiet) do
       test_context.refute error?
       g.invalid.command map: 'xxx'
       test_context.assert error?
     end
+  end
+
+  def test_logging
+    log_file = File.join(File.dirname(__FILE__), 'tmp_log.txt')
+    GrassGis.session dummy_config.merge(log: log_file) do
+      g.invalid.command map: 'xxx'
+    end
+    assert File.exists?(log_file)
+    assert_match /g\.invalid\.command map=/, File.read(log_file)
+    File.unlink log_file if File.exists?(log_file)
+  end
+
+  def test_logging_errors
+    log_file = File.join(File.dirname(__FILE__), 'tmp_log.txt')
+    GrassGis.session dummy_config.merge(log: log_file, dry: false, errors: :quiet) do
+      g.invalid.command map: 'xxx'
+    end
+    assert File.exists?(log_file)
+    assert_match /g\.invalid\.command map=/, File.read(log_file)
+    assert_match /error/i, File.read(log_file)
+    File.unlink log_file if File.exists?(log_file)
+  end
+
+  def test_logging_history
+    log_file = File.join(File.dirname(__FILE__), 'tmp_log.txt')
+    GrassGis.session dummy_config.merge(history: log_file) do
+      g.invalid.command map: 'xxx'
+    end
+    assert File.exists?(log_file)
+    assert_match /g\.invalid\.command map=/, File.read(log_file)
+    File.unlink log_file if File.exists?(log_file)
   end
 
 end
