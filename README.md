@@ -43,9 +43,13 @@ end
 
 ## Roadmap
 
-* Method to clean GRASS temporaries ($GISBASE/etc/clean_temp), or do
-  it automatically when disposing the session.
 * Write more documentation with examples.
+* Add some session helpers:
+  - Method to clean GRASS temporaries ($GISBASE/etc/clean_temp), or do
+    it automatically when disposing the session.
+  - Methods to check if maps exist
+  - Methods that return information as objects (arrays, hashes), e.g.
+    values returned by r.what, the current region, etc.
 
 ### GRASS cooking DSL
 
