@@ -135,4 +135,15 @@ class TestContext < Minitest::Test
     File.unlink log_file if File.exists?(log_file)
   end
 
+  def test_session_with_parameter
+    outer_self = object_id
+    inner_self = nil
+    passed_parameter = nil
+    GrassGis.session dummy_config do |grass|
+      inner_self = object_id
+      passed_parameter = grass
+    end
+    assert_equal outer_self, inner_self
+    assert passed_parameter.is_a?(GrassGis::Context)
+  end
 end

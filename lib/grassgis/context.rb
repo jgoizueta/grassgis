@@ -161,7 +161,11 @@ module GrassGis
     #     end
     #
     def session(&blk)
-      instance_eval(&blk)
+      if blk.arity == 1
+        blk.call self
+      else
+        instance_eval &blk
+      end
     end
 
     def dry?
