@@ -84,11 +84,22 @@ class TestContext < Minitest::Test
     end
   end
 
-  def test_session_quiet_errors
+  def test_session_silent_errors
+    test_context = self
+    GrassGis.session dummy_config.merge(dry: false, errors: :silent) do
+      test_context.refute error?
+      g.invalid.command map: 'xxx'
+      test_context.assert error?
+    end
+  end
+
+  def test_session_quiet_raise_errors
     test_context = self
     GrassGis.session dummy_config.merge(dry: false, errors: :quiet) do
       test_context.refute error?
-      g.invalid.command map: 'xxx'
+      test_context.assert_raises {
+        g.invalid.command map: 'xxx'
+      }
       test_context.assert error?
     end
   end
@@ -105,7 +116,7 @@ class TestContext < Minitest::Test
 
   def test_logging_errors
     log_file = File.join(File.dirname(__FILE__), 'tmp_log.txt')
-    GrassGis.session dummy_config.merge(log: log_file, dry: false, errors: :quiet) do
+    GrassGis.session dummy_config.merge(log: log_file, dry: false, errors: :silent) do
       g.invalid.command map: 'xxx'
     end
     assert File.exists?(log_file)

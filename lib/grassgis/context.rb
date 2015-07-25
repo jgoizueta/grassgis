@@ -278,7 +278,9 @@ module GrassGis
   # :errors to define the behaviour when a GRASS command fails:
   # * :raise is the default and raises on errors
   # * :console shows standar error output of commands
-  # * :quiet error output is retained but not shown
+  # * :quiet error output is retained but not shown; no exceptions are
+  #   raise except when the command cannot be executed (e.g. when
+  #   the command name is ill-formed)
   #
   # If :errors is anything other than :raise, it is up to the user
   # to check each command for errors. With the :console option
@@ -296,6 +298,12 @@ module GrassGis
   # * :commands show all executed commands (the default)
   # * :output show the output of commands too
   # * false don't echo anything
+  #
+  # Testing/debugging options:
+  #
+  # * :dry prevents actual execution of any command
+  # * errors: :silent omits raising exceptions (as :quiet) even when
+  #   a command cannot be executed (usually because of an invalid command name)
   #
   def self.session(config, &blk)
     context = Context.new(config)
@@ -326,10 +334,13 @@ module GrassGis
 
   def self.error(command, error_mode = :raise)
     if command
-      if error_mode == :raise
-        if command.error
-          raise command.error
-        elsif (command.status_value && command.status_value != 0)
+      if command.error # :silent mode for testing/debugging?
+        # Errors that prevent command execution
+        # (usually ENOENT because the command does not exist)
+        # are always raised
+        raise command.error unless error_mode == :silent
+      elsif error_mode == :raise
+        if (command.status_value && command.status_value != 0)
           raise Error.new, error_info(command)
         end
       end
