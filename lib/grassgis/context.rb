@@ -179,7 +179,7 @@ module GrassGis
         log log_file, cmd.to_s(with_input: true)
       end
       unless dry?
-        cmd.run error_output: :reparate
+        cmd.run error_output: :separate
       end
       if cmd.output
         puts cmd.output if @config[:echo] == :output
