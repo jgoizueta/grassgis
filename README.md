@@ -1,3 +1,31 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [GrassGis](#grassgis)
+  - [Installation](#installation)
+  - [Usage](#usage)
+    - [Configuration](#configuration)
+    - [Running a GRASS Session](#running-a-grass-session)
+    - [History](#history)
+    - [Options](#options)
+      - [Echo](#echo)
+      - [Errors](#errors)
+      - [Logging](#logging)
+    - [Technicalities](#technicalities)
+      - [Session scopes](#session-scopes)
+      - [Invalid commands](#invalid-commands)
+  - [Helper methods](#helper-methods)
+    - [Examples](#examples)
+      - [1. Map existence](#1-map-existence)
+      - [2. Information as Hashes](#2-information-as-hashes)
+      - [3. Average angle](#3-average-angle)
+  - [Roadmap](#roadmap)
+    - [GRASS cooking DSL](#grass-cooking-dsl)
+  - [Contributing](#contributing)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # GrassGis
 
 [![Gem Version](https://badge.fury.io/rb/grassgis.svg)](http://badge.fury.io/rb/grassgis)
