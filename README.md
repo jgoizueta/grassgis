@@ -372,7 +372,7 @@ GrassGis.session configuration do
 end
 ```
 
-### 2. Information as Hashes
+#### 2. Information as Hashes
 
 Following methods show how to obtain information about a raster map
 and the current region as a Hash:
@@ -405,7 +405,7 @@ def region_res(grass)
 end
 ```
 
-### 3. Average angle
+#### 3. Average angle
 
 Let's assume we have a raster map `aspect` which is
 a direction angle (i.e. a cyclic value from 0 to 360).
