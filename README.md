@@ -113,10 +113,187 @@ d.erase.run
 g.list.run
 ```
 
+### History
+
+The return value of a GRASS command invocation inside a session is
+a `SysCmd::Command`
+(see the [sys_cmd gem](https://github.com/jgoizueta/sys_cmd)).
+
+```ruby
+GrassGis.session configuration do+
+  cmd = g.region '-p'
+  puts cmd.output # command output is kept in the Command object
+  puts cmd.status_value # 0 for success
+end
+```
+
+You don't need to assign commands to variables as in the example
+to access them, because they're all kept in an array accesible
+through the `history` method of the session:
+
+```ruby
+GrassGis.session configuration do+
+  r.info 'slope'
+  g.region '-p'
+  puts history.size       # 2
+  puts history[-1].output # output of g.region
+  puts history[-2].output # output of r.info
+end
+```
+
+The last executed command (`history[-1]`) is also accessible through
+the `last` method and its output through `output`:
+
+```ruby
+GrassGis.session configuration do+
+  r.info 'slope'
+  g.region '-p'
+  puts output # output of g.region (same as last.output)
+  puts last.status_value # result status of g.region
+end
+```
+
+### Options
+
+By default the commands executed in a session are echoed to standard output
+(just the command, not its output) and error return status causes
+an exception to be raised.
+
+This behaviour can be changed with some options:
+
+#### Echo
+
+Pass `false` as the `:echo` option it you don't want to output
+command names and `:output` if you want to output both
+the command name and its output.
+
+```ruby
+GrassGis.session configuration.merge(echo: false) do
+  # Command names not echoed now ...
+end
+
+GrassGis.session configuration.merge(echo: :output) do
+  # Command names and its output echoed ...
+end
+```
+
+#### Errors
+
+To avoid raising exceptions when commands return an error status you can pass
+`:quiet` to the `:errors` option. In that case the `error?` method of the
+session can be used to check if the previous messatge returned an error status;
+`error_info` to get its error message and the status of the command
+of the command can be obtained through the `last` command method.
+
+```ruby
+GrassGis.session configuration.merge(errors: :quiet) do
+  r.surf.rst 'randpts', elev: 'rstdef', zcol: 'value'
+  if error?
+    puts "Last command didn't go well..."
+    puts "It returned the code: #{last.status_value}"
+    puts "Here's what it said about the problem:"
+    puts error_info
+  end
+end
+```
+
+With the `:quiet` option errors during command execution are not raised,
+but if a problem prevents the command from being executed (e.g. the
+module does not exist) an exception is still generated. This exception
+can be avoided too, with the `:silent` option, intended for tests and
+debugging.
+
+Passing the `:console` value to the `:errors` option is like `:quiet`,
+with the additional effect of relaying the command standard error output
+to the error output of the script.
+
+#### Logging
+
+With the `:log` option you can specify the name of a file
+where to record the commands executed and its output.
+
+### Technicalities
+
+#### Session scopes
+
+In a session block, the Ruby `self` object is altered to
+refer to a `GrassGis::Context` object. That means that in addition
+to the enclosing `self`, any instance variables of the enclosing
+scope are not directly available. This may cause some surprises
+but is easy to overcome.
+
+```ruby
+@value = 10
+GrassGis.session configuration do
+  puts @value # nil!
+end
+```
+
+A possible workaround is to assign instance variables that we need
+in the session to local variables:
+
+```ruby
+@value = 10
+value = @value
+GrassGis.session configuration do
+  puts value # 10
+end
+```
+
+To avoid defining these variables you can pass a `:locals` Hash
+in the configuration to define values that you need to access
+in the session (but you won't be able to assign to them, because
+they're not local variables!)
+
+```ruby
+@value = 10
+
+GrassGis.session configuration.merge(locals: { value: @value }) do
+  puts value # 10
+  value = 11 # don't do this: you're creating a local in the session
+end
+```
+
+A different approach is prevent the session block from using a special
+`self` by defining a parameter to the block. This parameter will have
+the value of a `GrassGis::Context` which you'll need to explicitly use
+to execute any commands:
+
+```ruby
+@value = 10
+GrassGis.session configuration do |grass|
+  puts @value # 10
+  grass.g.region res: 10 # now you need to use the object to issue commans
+end
+```
+
+#### Invalid commands
+
+Currently the generation of GRASS commands inside a session is
+implemented in a versy simple way which allows to generate any command
+name even if it is invalid or does not exist. This has the advantage
+of supporting any version of GRASS, but doesn't allow for early
+detection of invalid commands (e.g. due to typos) or invalid command
+parameters.
+
+```ruby
+GrassGis.session configuration do |grass|
+  g.regoin res: 10     # Oops (runtime error)
+  g.anything.goes.run  # another runtime error
+end
+```
+
+If the command generated does not exist a runtime `ENOENT` exception will
+occur.
+
+If the command exists, then if parameters are not valid, the command
+will execute but will return an error status. This will be handled
+as explaned above.
+
 ## Helper methods
 
 When writing a non-trivial program you'll probably
-find you want to define methods to avoid innecesary repetition.
+find you want to define methods to avoid unnecessary repetition.
 
 Let's see how you can call methdos from your session and be
 able to execute GRASS commands from the method in the context of the session.
@@ -125,7 +302,7 @@ Inside a session, `self` refers to an object of class
 `GrassGis::Context` which represents the current GRASS session.
 
 You can invoke grass commands directly on this object, so, if you pass
-this object aroung you can use it to execute GRASS commands:
+this object around you can use it to execute GRASS commands:
 
 ```ruby
 def helper_method(grass)
@@ -194,7 +371,6 @@ GrassGis.session configuration do
   end
 end
 ```
-
 
 ### 2. Information as Hashes
 
@@ -290,88 +466,6 @@ GrassGis.session configuration do
   end
 end
 ```
-
-### Options
-
-TODO: Explain options for error handling, echoing, logging, ...
-
-### Technicalities
-
-#### Session scopes
-
-In a session block, the Ruby `self` object is altered to
-refer to a `GrassGis::Context` object. That means that in addition
-to the enclosing `self`, any instance variables of the enclosing
-scope are not directly available. This may cause some surprises
-but is easy to overcome.
-
-```ruby
-@value = 10
-GrassGis.session configuration do
-  puts @value # nil!
-end
-```
-
-A possible workaround is to assign instance variables that we need
-in the session to local variables:
-
-```ruby
-@value = 10
-value = @value
-GrassGis.session configuration do
-  puts value # 10
-end
-```
-
-To avoid defining these variables you can pass a `:locals` Hash
-in the configuration to define values that you need to access
-in the session (but you won't be able to assign to them, because
-they're not local variables!)
-
-```ruby
-@value = 10
-
-GrassGis.session configuration.merge(locals: { value: @value }) do
-  puts value # 10
-  value = 11 # don't do this: you're creating a local in the session
-end
-```
-
-A different approach is prevent the session block from using a special
-`self` by defining a parameter to the block. This parameter will have
-the value of a `GrassGis::Context` which you'll need to explicitly use
-to execute any commands:
-
-```ruby
-@value = 10
-GrassGis.session configuration do |grass|
-  puts @value # 10
-  grass.g.region res: 10 # now you need to use the object to issue commans
-end
-```
-
-#### Invalid commands
-
-Currently the generation of GRASS commands inside a session is
-implemented in a versy simple way which allows to generate any command
-name even if it is invalid or does not exist. This has the advantage
-of supporting any version of GRASS, but doesn't allow for early
-detection of invalid commands (e.g. due to typos) or invalid command
-parameters.
-
-```ruby
-GrassGis.session configuration do |grass|
-  g.regoin res: 10     # Oops (runtime error)
-  g.anything.goes.run  # another runtime error
-end
-```
-
-If the command generated does not exist a runtime `ENOENT` exception will
-occur.
-
-If the command exists, then if parameters are not valid, the command
-will execute but will return an error status. This will be handled
-as explaned above.
 
 ## Roadmap
 
