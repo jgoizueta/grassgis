@@ -236,7 +236,7 @@ module GrassGis
     #     end
     #
     def grass_version
-      Gem::Version.new @config[:version]
+      GrassGis.version @config[:version]
     end
 
   private
