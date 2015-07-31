@@ -1,0 +1,7 @@
+epsg:      4326
+north:     90
+south:     -90
+west:      -180
+east:      180
+e-w resol: 1
+n-s resol: 1

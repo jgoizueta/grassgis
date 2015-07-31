@@ -8,11 +8,12 @@ def quoted_name(name)
 end
 
 def dummy_config
+  mock_grass = File.expand_path('grass', File.dirname(__FILE__))
   {
-    gisbase: '/nonexistent/path',
-    gisdbase: '/grassdata',
-    location: 'world',
-    mapset: 'PERMANENT',
+    gisbase:  File.join(mock_grass, 'gisbase'),
+    gisdbase: File.join(mock_grass, 'gisdbase'),
+    location: 'a_location',
+    mapset: 'a_mapset',
   }.merge(
     # Test options
     dry: true,  # don't execute commands

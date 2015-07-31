@@ -1,0 +1,73 @@
+#!/usr/bin/env ruby
+
+require 'fileutils'
+
+def read_vars(file)
+  Hash[File.read(file).lines.map{|l| l.strip.split(':').map(&:strip)}]
+end
+
+$print = false
+$n = $s = $w = $e = $res = nil
+ARGV.each do |arg|
+  case arg
+  when '-p'
+    $print = true
+  when /\An=([\d\.\,\-]+)\Z/
+    $n = $1
+  when /\As=([\d\.\,\-]+)\Z/
+    $s = $1
+  when /\Aw=([\d\.\,\-]+)\Z/
+    $w = $1
+  when /\Ae=([\d\.\,\-]+)\Z/
+    $e = $1
+  when /\Ares=([\d\.\,\-]+)\Z/
+    $res = $1
+  else
+    STDERR.puts "Invalid parameters (#{arg})"
+    exit 1
+  end
+end
+
+if !ENV['GISBASE'] || !File.directory?(ENV['GISBASE'])
+  STDERR.puts "No GRASS session found"
+  exit 2
+end
+
+if ENV['GISRC'] && File.file?(ENV['GISRC'])
+  vars = read_vars(ENV['GISRC'])
+  $gisdbase = vars['GISDBASE']
+  $location = vars['LOCATION_NAME']
+  $mapset = vars['MAPSET']
+end
+
+unless $gisdbase && File.directory?($gisdbase) && $location && $mapset &&
+       File.directory?(File.join($gisdbase, $location, $mapset))
+  STDERR.puts "Invalid configuration"
+  exit 3
+end
+
+location_path = File.join($gisdbase, $location, $mapset)
+
+if $n || $s || $w || $e || $res
+  region = read_vars(File.join(location_path, 'WIND'))
+  region['north'] = $n if $n
+  region['south'] = $s if $s
+  region['west'] = $w if $w
+  region['east'] = $e if $e
+  region['e-w resol'] = $res if $res
+  region['n-s resol'] = $res if $res
+
+  File.open(File.join(location_path, 'WIND'), 'w') do |file|
+    file.puts "epsg:      #{region['epsg']}"
+    file.puts "north:     #{region['north']}"
+    file.puts "south:     #{region['south']}"
+    file.puts "west:      #{region['west']}"
+    file.puts "east:      #{region['east']}"
+    file.puts "e-w resol: #{region['e-w resol']}"
+    file.puts "n-s resol: #{region['n-s resol']}"
+  end
+end
+
+if $print
+  puts File.read(File.join(location_path, 'WIND'))
+end

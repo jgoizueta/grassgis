@@ -1,0 +1,51 @@
+#!/usr/bin/env ruby
+
+require 'fileutils'
+
+def read_vars(file)
+  Hash[File.read(file).lines.map{|l| l.strip.split(':').map(&:strip)}]
+end
+
+$epsg = nil
+$location = nil
+ARGV.each do |arg|
+  case arg
+  when '-t'
+  when /\Aepsg=(\d+)\Z/
+    $epsg = $1
+  when /\Alocation=(.+)\Z/
+    $location = $1
+  else
+    STDERR.puts "Invalid parameters"
+    exit 1
+  end
+end
+
+if !ENV['GISBASE'] || !File.directory?(ENV['GISBASE'])
+  STDERR.puts "No GRASS session found"
+  exit 2
+end
+
+if ENV['GISRC'] && File.file?(ENV['GISRC'])
+  vars = read_vars(ENV['GISRC'])
+  $gisdbase = vars['GISDBASE']
+end
+
+unless $gisdbase && File.directory?($gisdbase)
+  STDERR.puts "Invalid configuration"
+  exit 3
+end
+
+permanent = File.join($gisdbase, $location, 'PERMANENT')
+FileUtils.mkdir_p permanent
+File.open(File.join(permanent, 'DEFAULT_WIND'), 'w') do |file|
+  file.puts "epsg:      #{$epsg}"
+  file.puts "north:     90"
+  file.puts "south:     -90"
+  file.puts "west:      -180"
+  file.puts "east:      180"
+  file.puts "e-w resol: 1"
+  file.puts "n-s resol: 1"
+end
+
+FileUtils.cp File.join(permanent, 'DEFAULT_WIND'), File.join(permanent, 'WIND')
