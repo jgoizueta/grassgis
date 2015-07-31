@@ -9,10 +9,11 @@ Support for scripting GRASS with Ruby.
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
 
-- [Installation](#installationx)
+- [Installation](#installation)
 - [Usage](#usage)
   - [Configuration](#configuration)
   - [Running a GRASS Session](#running-a-grass-session)
+  - [Creating new locations and mapsets](#creating-new-locations-and-mapsets)
   - [History](#history)
   - [Options](#options)
     - [Echo](#echo)
@@ -139,6 +140,31 @@ to invoke `.run` on it to execute it:
 d.erase.run
 g.list.run
 ```
+
+### Creating new locations and mapsets
+
+To create a new location and/or mapset, open a session to it
+and use a `:create` parameter like this:
+
+```ruby
+options = configuration.merge(
+  location: 'new_location',
+  mapset: 'new_mapset',
+  create: {
+    epsg: 4326               # coordinate system for the new location
+    limits: [-5, 30, 5, 50], # optional E, S, W, N limits
+    res: 2                   # optional resolution
+  }
+)
+GrassGis.session options do
+  g.region '-p'
+  puts output
+end
+```
+
+Use `nil` or `PERMANENT` for the mapset to avoid creating a new mapset.
+
+Existing locations or mapsets are not changed.
 
 ### History
 
@@ -496,7 +522,6 @@ end
 
 ## Roadmap
 
-* Methods to create new locations and mapsets.
 * Change Module to define explicitly available GRASS commands instead of
   accepting anything with `method_missing`. Declare commands with permitted
   arguments and options, etc.

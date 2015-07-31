@@ -1,5 +1,8 @@
 require 'sys_cmd'
 require 'grassgis/version'
+require 'grassgis/error'
 require 'grassgis/support'
 require 'grassgis/module'
+require 'grassgis/location'
+require 'grassgis/mapset'
 require 'grassgis/context'

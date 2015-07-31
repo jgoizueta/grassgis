@@ -7,6 +7,7 @@ module GrassGis
     REQUIRED_CONFIG = [:gisbase, :location]
 
     def initialize(config)
+      # TODO: raise error unless required parameters are present
       # apply configuration defaults
       config[:gisdbase] ||= File.join(ENV['HOME'], 'grassdata')
       config[:mapset]  ||= ENV['USER']
@@ -82,16 +83,12 @@ module GrassGis
     end
 
     def allocate
-      @gisrc = Tempfile.new('gisrc')
-      @gisrc.puts "LOCATION_NAME: #{@config[:location]}"
-      @gisrc.puts "GISDBASE: #{@config[:gisdbase]}"
-      @gisrc.puts "MAPSET: #{@config[:mapset]}"
-      @gisrc.puts "GUI: #{@config[:gui]}"
-      @gisrc.close
-
       @original_env = {}
 
-      replace_var 'GISRC', @gisrc.path
+      mapset = Mapset.new(self)
+      actual_mapset = mapset.exists? ? mapset.to_s : 'PERMANENT'
+      set_gisrc @config.merge(mapset: actual_mapset)
+
       replace_var 'GISBASE', @config[:gisbase]
       replace_var 'GRASS_VERSION', @config[:version]
       replace_var 'GRASS_MESSAGE_FORMAT', @config[:message_format].to_s
@@ -123,8 +120,10 @@ module GrassGis
     def dispose
       @gisrc.unlink if @gisrc
       @gisrc = nil
-      @original_env.each do |var, value|
-        ENV[var] = value
+      if @original_env
+        @original_env.each do |var, value|
+          ENV[var] = value
+        end
       end
       @original_env = {}
     end
@@ -177,11 +176,7 @@ module GrassGis
       if @config[:echo]
         puts cmd.to_s(with_input: false)
       end
-      log_file = @config[:log] || @config[:history]
-      if log_file
-        log_timestamp log_file
-        log log_file, cmd.to_s(with_input: true)
-      end
+      log { cmd.to_s(with_input: true) }
       unless dry?
         cmd.run error_output: :separate
       end
@@ -192,15 +187,51 @@ module GrassGis
       cmd
     end
 
-  private
-
-    def log_timestamp(file)
-      log file, Time.now
+    def log(text = nil)
+      log_file = logging_file
+      if log_file
+        log_timestamp log_file
+        text ||= yield if !text && block_given?
+        log_message log_file, text
+      end
     end
 
-    def log(file, message)
+    def logging?
+      !!logging_file
+    end
+
+    # This should be used instead of g.mapset to avoid problems under Windows
+    def change_mapset(new_mapset)
+      log "Change mapset to #{new_mapset}"
+      set_gisrc @config.merge(mapset: new_mapset)
+    end
+
+  private
+
+    def set_gisrc(options)
+      @old_gisrc = @gisrc
+      @gisrc = Tempfile.new('gisrc')
+      @gisrc.puts "GISDBASE: #{options[:gisdbase]}"      if options[:gisdbase]
+      @gisrc.puts "LOCATION_NAME: #{options[:location]}" if options[:location]
+      @gisrc.puts "MAPSET: #{options[:mapset]}"          if options[:mapset]
+      @gisrc.puts "GUI: #{options[:gui]}"                if options[:gui]
+      @gisrc.close
+      replace_var 'GISRC', @gisrc.path
+      @old_gisrc.unlink if @old_gisrc
+    end
+
+    def logging_file
+      @config[:log] || @config[:history]
+    end
+
+    def log_timestamp(file)
+      log_message file, Time.now
+    end
+
+    def log_message(file, message, options = {})
       if file && message
         File.open(file, 'a') do |log_file|
+          # TODO: implement options[:indent]
           log_file.puts message
         end
       end
@@ -233,7 +264,7 @@ module GrassGis
     end
 
     def replace_var(var, value)
-      @original_env[var] = ENV[var]
+      @original_env[var] ||= ENV[var]
       ENV[var] = value
     end
 
@@ -312,12 +343,10 @@ module GrassGis
   def self.session(config, &blk)
     context = Context.new(config)
     context.allocate
+    create context, config[:create]
     context.session &blk
   ensure
     context.dispose if context
-  end
-
-  class Error < StandardError
   end
 
   def self.error?(command)
@@ -351,4 +380,27 @@ module GrassGis
     end
   end
 
+  class <<self
+    private
+    def create(context, options)
+      return unless options
+      gisdbase = context.configuration[:gisdbase]
+      unless File.directory?(gisdbase)
+        context.log "Create GISDBASE #{gisdbase}"
+        FileUtils.mkdir_p gisdbase
+      end
+      location = Location.new(context)
+      unless location.exists?
+        context.log "Create location #{location} at #{gisdbase}"
+        location.create! options
+      end
+      mapset = Mapset.new(context)
+      unless mapset.exists?
+        context.log "Create mapset #{mapset} at location #{location.path}"
+        mapset.create! options
+      end
+      # context.g.mapset mapset: mapset.to_s, location: location.to_s, dbase: gisdbase
+      context.change_mapset mapset.to_s
+    end
+  end
 end
