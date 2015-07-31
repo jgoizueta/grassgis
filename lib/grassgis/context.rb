@@ -259,7 +259,7 @@ module GrassGis
           if @config[:errors] == :console || @config[:echo] == :output
             STDERR.puts error_info
           end
-          log @config[:log], error_info
+          log "Error:", indented: error_info
         end
       end
     end
