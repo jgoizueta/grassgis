@@ -146,4 +146,13 @@ class TestContext < Minitest::Test
     assert_equal outer_self, inner_self
     assert passed_parameter.is_a?(GrassGis::Context)
   end
+
+  def test_version_numbers
+    version = nil
+    GrassGis.session dummy_config.merge(version: '7.10.0') do
+      version = grass_version
+    end
+    assert_equal '7.10.0', version.to_s
+    assert version > GrassGis.version('7.9.10')
+  end
 end

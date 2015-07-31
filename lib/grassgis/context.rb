@@ -222,6 +222,23 @@ module GrassGis
       end
     end
 
+    # Version of GRASS in use in the session, as a comparable version
+    # object.
+    #
+    # Example of use:
+    #
+    #     GrassGis.session configuration do
+    #       if grass_version >= GrassGis.version('7.0.0')
+    #         r.relief input: 'dem', output: 'relief'
+    #       else
+    #         r.shaded.relief map: 'dem', shadedmap: 'relief'
+    #       end
+    #     end
+    #
+    def grass_version
+      Gem::Version.new @config[:version]
+    end
+
   private
 
     def set_gisrc(options)
@@ -393,6 +410,11 @@ module GrassGis
         end
       end
     end
+  end
+
+  # Return a comparable Version object from a version number string
+  def self.version(version)
+    Gem::Version.new version
   end
 
   class <<self

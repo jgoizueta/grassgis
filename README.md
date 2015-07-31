@@ -531,6 +531,8 @@ end
   - Methods to check if maps exist
   - Methods that return information as objects (arrays, hashes), e.g.
     values returned by r.what, the current region, etc.
+  - Methods that execute operations in a GRASS-version independent
+    manner (higher level, version independent interface to modules).
 
 ### GRASS cooking DSL
 
