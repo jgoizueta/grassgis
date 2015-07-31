@@ -176,7 +176,7 @@ module GrassGis
       if @config[:echo]
         puts cmd.to_s(with_input: false)
       end
-      log { cmd.to_s(with_input: true) }
+      log("Execute command:") { cmd.to_s(with_input: true) }
       unless dry?
         cmd.run error_output: :separate
       end
@@ -187,12 +187,17 @@ module GrassGis
       cmd
     end
 
-    def log(text = nil)
+    def log(text, options = {})
       log_file = logging_file
       if log_file
-        log_timestamp log_file
-        text ||= yield if !text && block_given?
-        log_message log_file, text
+        timestamp = Time.now.strftime("%H:%M:%S")
+        msg = "#{timestamp} - #{text}"
+        log_message log_file, msg
+        indented_text = options[:indented]
+        indented_text ||= yield if !indented_text && block_given?
+        if indented_text
+          log_message log_file, indented_text, indentation: '  '
+        end
       end
     end
 
@@ -204,6 +209,17 @@ module GrassGis
     def change_mapset(new_mapset)
       log "Change mapset to #{new_mapset}"
       set_gisrc @config.merge(mapset: new_mapset)
+    end
+
+    def log_header
+      log_file = logging_file
+      if log_file
+        msg = "Start GrassGis Session [#{Time.now}]"
+        log_message log_file, "# #{'='*msg.size}"
+        log_message log_file, "# #{msg}"
+        log_message log_file, configuration.to_yaml, indentation: '# '
+        log_message log_file, "# #{'-'*msg.size}"
+      end
     end
 
   private
@@ -224,14 +240,12 @@ module GrassGis
       @config[:log] || @config[:history]
     end
 
-    def log_timestamp(file)
-      log_message file, Time.now
-    end
-
     def log_message(file, message, options = {})
       if file && message
         File.open(file, 'a') do |log_file|
-          # TODO: implement options[:indent]
+          if options[:indentation]
+            message = message.gsub(/^/, options[:indentation])
+          end
           log_file.puts message
         end
       end
@@ -343,6 +357,7 @@ module GrassGis
   def self.session(config, &blk)
     context = Context.new(config)
     context.allocate
+    context.log_header
     create context, config[:create]
     context.session &blk
   ensure
