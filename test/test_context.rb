@@ -149,6 +149,10 @@ class TestContext < Minitest::Test
 
   def test_version_numbers
     version = nil
+    GrassGis.session dummy_config do
+      version = grass_version
+    end
+    assert_equal '1.0.0', version.to_s
     GrassGis.session dummy_config.merge(version: '7.10.0') do
       version = grass_version
     end
