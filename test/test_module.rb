@@ -44,4 +44,11 @@ class TestModule < Minitest::Test
     cmd = r.colors map: 'a_map', rules: color_table
     assert_equal "r.colors map=a_map rules=- << EOF\n#{unindented}\nEOF\n", cmd.to_s(with_input: true)
   end
+
+  def test_nil_options_are_ignored
+    r = GrassGis::Module.new('r')
+    cmd = r.resamp.stats '-n', input: %w(map1 map2 map3), output: "map4", ignored: nil
+    input =  %w(map1 map2 map3).map { |a| quoted_name(a) }.join(',')
+    assert_equal "r.resamp.stats -n input=#{input} output=#{quoted_name('map4')}", cmd.to_s
+  end
 end

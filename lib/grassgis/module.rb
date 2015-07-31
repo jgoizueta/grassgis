@@ -34,6 +34,7 @@ module GrassGis
           case arg
           when Hash
             arg.each do |key, value|
+              next if value.nil?
               case value
               when Array
                 value = value*","
