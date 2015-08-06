@@ -23,6 +23,7 @@ module GrassGis
       config[:png_auto_write] = true unless config.key?(:png_auto_write)
       config[:gnuplot] ||= 'gnuplot -persist'
       config[:gui] ||= 'wxpython'
+      config[:pyhton] ||= 'python'
 
       config[:errors] ||= :raise
       config[:echo] = :commands unless config.key?(:echo)
@@ -96,6 +97,7 @@ module GrassGis
       replace_var 'GRASS_TRANSPARENT', bool_var(@config[:transparent])
       replace_var 'GRASS_PNG_AUTO_WRITE', bool_var(@config[:png_auto_write])
       replace_var 'GRASS_GNUPLOT', @config[:gnuplot]
+      replace_var 'GRASS_PYTHON', @config[:python]
 
       paths = ['bin', 'scripts']
       if OS.windows?
