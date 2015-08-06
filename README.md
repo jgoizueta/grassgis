@@ -81,6 +81,7 @@ to define the `:gisbase` option to point to the base directory of the GRASS
 installation.
 
 For *Ubuntu* it will typically be `/usr/lib/grass70` for version 7 of GRASS.
+
 In *Windows*, if installed with
 [OSGeo4W](http://trac.osgeo.org/osgeo4w/) it is typically of
 the form `C:\OGeo4W\app\grass\grass-7.0.0` (the last directory will vary
