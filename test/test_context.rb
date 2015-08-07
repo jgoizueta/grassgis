@@ -68,11 +68,11 @@ class TestContext < Minitest::Test
     end
     assert_equal 2, history_size_at_2
     assert_equal 4, history_size_at_4
-    assert_equal 'g.region res=10', history[-4].to_s
-    assert_equal 'g.region res=20', history[-3].to_s
-    assert_equal 'g.region res=30', history[-2].to_s
-    assert_equal 'g.region res=40', history[-1].to_s
-    assert_equal 'g.region res=40', last.to_s
+    assert_equal "g.region res=#{quoted_name('10')}", history[-4].to_s
+    assert_equal "g.region res=#{quoted_name('20')}", history[-3].to_s
+    assert_equal "g.region res=#{quoted_name('30')}", history[-2].to_s
+    assert_equal "g.region res=#{quoted_name('40')}", history[-1].to_s
+    assert_equal "g.region res=#{quoted_name('40')}", last.to_s
   end
 
   def test_session_raise_errors

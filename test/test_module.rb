@@ -14,7 +14,7 @@ class TestModule < Minitest::Test
   def test_command_with_multiple_argument
     r = GrassGis::Module.new('r')
     cmd = r.resamp.stats '-n', input: %w(map1 map2 map3), output: "map4"
-    input =  %w(map1 map2 map3).map { |a| quoted_name(a) }.join(',')
+    input =  quoted_name('map1,map2,map3')
     assert_equal "r.resamp.stats -n input=#{input} output=#{quoted_name('map4')}", cmd.to_s
   end
 
@@ -48,7 +48,7 @@ class TestModule < Minitest::Test
   def test_nil_options_are_ignored
     r = GrassGis::Module.new('r')
     cmd = r.resamp.stats '-n', input: %w(map1 map2 map3), output: "map4", ignored: nil
-    input =  %w(map1 map2 map3).map { |a| quoted_name(a) }.join(',')
+    input =  quoted_name('map1,map2,map3')
     assert_equal "r.resamp.stats -n input=#{input} output=#{quoted_name('map4')}", cmd.to_s
   end
 end
