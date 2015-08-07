@@ -18,13 +18,20 @@ class TestContext < Minitest::Test
   end
 
   def test_session_default_vars
-    python = gnuplot = nil
+    pythonpath_expected = File.join(dummy_config[:gisbase], 'etc', 'python')
+    if OS.windows?
+      pythonpath_expected = pythonpath_expected.gsub(File::SEPARATOR, File::ALT_SEPARATOR)
+    end
+
+    python = pythonpath = gnuplot = nil
     ENV['GRASS_PYTHON'] = ENV['GRASS_GNUPLOT'] = nil
     GrassGis.session dummy_config do
       python = ENV['GRASS_PYTHON']
+      pythonpath = ENV['PYTHONPATH']
       gnuplot = ENV['GRASS_GNUPLOT']
     end
     assert_equal 'python', python
+    assert_equal pythonpath_expected, pythonpath
     assert_equal 'gnuplot -persist', gnuplot
   end
 

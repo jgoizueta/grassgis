@@ -24,6 +24,7 @@ module GrassGis
       config[:gnuplot] ||= 'gnuplot -persist'
       config[:gui] ||= 'wxpython'
       config[:python] ||= 'python'
+      config[:pythonpath] ||= File.join(config[:gisbase], 'etc', 'python')
 
       config[:errors] ||= :raise
       config[:echo] = :commands unless config.key?(:echo)
@@ -98,6 +99,7 @@ module GrassGis
       replace_var 'GRASS_PNG_AUTO_WRITE', bool_var(@config[:png_auto_write])
       replace_var 'GRASS_GNUPLOT', @config[:gnuplot]
       replace_var 'GRASS_PYTHON', @config[:python]
+      insert_path 'PYTHONPATH', @config[:pythonpath]
 
       paths = ['bin', 'scripts']
       if OS.windows?
