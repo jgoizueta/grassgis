@@ -23,7 +23,7 @@ module GrassGis
       config[:png_auto_write] = true unless config.key?(:png_auto_write)
       config[:gnuplot] ||= 'gnuplot -persist'
       config[:gui] ||= 'wxpython'
-      config[:pyhton] ||= 'python'
+      config[:python] ||= 'python'
 
       config[:errors] ||= :raise
       config[:echo] = :commands unless config.key?(:echo)

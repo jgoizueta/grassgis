@@ -17,6 +17,17 @@ class TestContext < Minitest::Test
     assert_equal 11, value
   end
 
+  def test_session_default_vars
+    python = gnuplot = nil
+    ENV['GRASS_PYTHON'] = ENV['GRASS_GNUPLOT'] = nil
+    GrassGis.session dummy_config do
+      python = ENV['GRASS_PYTHON']
+      gnuplot = ENV['GRASS_GNUPLOT']
+    end
+    assert_equal 'python', python
+    assert_equal 'gnuplot -persist', gnuplot
+  end
+
   def test_session_path
     path = ENV['PATH']
     session_path = nil
