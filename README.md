@@ -322,6 +322,23 @@ GrassGis.session configuration do |grass|
 end
 ```
 
+The GRASS command `g.mapset` should not be used to change
+the current mapset, use the `change_mapset` method in a GrassGis
+session instead:
+
+```ruby
+GrassGis.session configuration do
+  # Get the name of the current mapset
+  g.mapsets '-p'
+  mapset = output.lines.last.split.first.inspect
+  # Copy 'some_map' raster map to PERMANENT
+  change_mapset 'PERMANENT'
+  g.copy rast: "some_map@#{original_mapset},some_map"
+  # Get back to our mapset
+  change_mapset mapset
+end
+```
+
 #### Invalid commands
 
 Currently the generation of GRASS commands inside a session is
