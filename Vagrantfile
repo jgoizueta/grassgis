@@ -1,6 +1,7 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+# GRASS 7 environment on Ubuntu for tests
 Vagrant.configure(2) do |config|
   config.vm.box = "ubuntu/trusty32"
 
