@@ -16,6 +16,7 @@ def dummy_config
     mapset: 'a_mapset',
   }.merge(
     # Test options
+    tools: false,
     dry: true,  # don't execute commands
     echo: false # don't output to the console
   )
