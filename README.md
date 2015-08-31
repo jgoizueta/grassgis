@@ -27,8 +27,8 @@ Support for scripting GRASS with Ruby.
     - [1. Map existence](#1-map-existence)
     - [2. Information as Hashes](#2-information-as-hashes)
     - [3. Average angle](#3-average-angle)
+  - [Recipes](#recipes)
 - [Roadmap](#roadmap)
-  - [GRASS cooking DSL](#grass-cooking-dsl)
 - [Contributing](#contributing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
