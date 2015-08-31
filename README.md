@@ -19,6 +19,7 @@ Support for scripting GRASS with Ruby.
     - [Echo](#echo)
     - [Errors](#errors)
     - [Logging](#logging)
+  - [Recipes](#recipes)
   - [Technicalities](#technicalities)
     - [Session scopes](#session-scopes)
     - [Invalid commands](#invalid-commands)
@@ -27,7 +28,6 @@ Support for scripting GRASS with Ruby.
     - [1. Map existence](#1-map-existence)
     - [2. Information as Hashes](#2-information-as-hashes)
     - [3. Average angle](#3-average-angle)
-  - [Recipes](#recipes)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 
@@ -266,6 +266,149 @@ to the error output of the script.
 
 With the `:log` option you can specify the name of a file
 where to record the commands executed and its output.
+
+### Recipes
+
+The `GrassCookbook` interface can be used to define geoprocessing
+"recipes" which specify required and generated data.
+
+A recipe is defined by calling `GrassCookbook.recipe` with a block
+that provides the recipe definition in a declarative way, using
+methods such as `description`, `required_parameters`, `required_files`,
+`required_raster_maps`, `generated_rater_maps`, etc.
+
+The `process` method defines, with a block, the recipes's procedure.
+The arguments to this block will be taken auto-magically from parameters
+of the same name (parameters are provided to a recipe-executing environment
+through a Hash).
+
+The available `GrassCookbook` methods can be used to determine which recipes need
+to be executed, in which order, and which products will be generated
+based on available data.
+
+For example, given this three recipes:
+
+```ruby
+GrassCookbook.recipe :dem_base_from_mdt05 do
+  description %{
+    Generate a DEM for the location region at fixed 5m resolution
+    from CNIG's MDT05 data.
+  }
+
+  required_files 'data/MDT05'
+  generated_raster_maps 'dem_base'
+
+  process do |mdt05_sheets|
+    # Import MDT05 sheets and generate dem_base
+    mdt05_sheets = mdt05_sheets.map { |n| "MDT05-#{n}-H30-LIDAR.asc"}
+    sheet_maps = Hash[mdt05_sheets.map { |s| [s, File.basename(s, '.asc')]}]
+    mdt05_sheets.each do |sheet|
+      map = sheet_maps[sheet]
+      r.in.gdal '-o', '--overwrite',
+        input: File.join('data', 'MDT05', sheet),
+        output: map
+      r.colors map: map, color: 'elevation'
+    end
+    # Keep previous resolution
+    ewres, nsres = region_res
+    # Patch sheets and crop
+    g.region res: 5
+    r.patch input: sheet_maps.values, output: 'dem_base'
+    r.colors map: 'dem_base', color: 'elevation'
+    # Restore previous resolution
+    g.region nsres: nsres, ewres: ewres
+    g.remove '-f', type: 'raster', name: sheet_maps.values
+  end
+end
+
+GrassCookbook.recipe :dem_base_derived do
+  description %{
+    Generate DEM-derived maps from the 5m dem base:
+    slope, aspect and relief shading
+  }
+
+  required_raster_maps 'dem_base'
+  generated_raster_maps 'shade_base', 'slope_base', 'aspect_base'
+
+  process do
+    r.relief input: 'dem_base', output: 'shade_base'
+    r.slope.aspect elevation: 'dem_base',
+                   slope:     'slope_base',
+                   aspect:    'aspect_base'
+  end
+end
+
+GrassCookbook.recipe :working_dem do
+  description %{
+    Generate DEM data at working resolution
+  }
+
+  required_raster_maps 'dem_base', 'slope_base', 'aspect_base'
+  generated_raster_maps 'dem', 'slope', 'aspect'
+
+  process do |resolution|
+    # Keep previous resolution
+    ewres, nsres = region_res
+
+    resamp_average input: 'dem_base', output: 'dem', output_res: resolution
+    resamp_average input: 'slope_base', output: 'slope', output_res: resolution
+    resamp_average input: 'aspect_base', output: 'aspect', output_res: resolution
+
+    # Restore previous resolution
+    g.region nsres: nsres, ewres: ewres
+  end
+end
+```
+
+We could now use those recipes to compute some permanent base maps and
+alternative scenario mapsheets varying some parameter.
+
+In this example we fixed parameters defines the available data to create
+a base DEM at a resolution of 5, which will be kept in the PERMANENT
+mapset.
+
+Then we vary the `resolution` parameter to compute derived information
+(topography information at the given resolution) for two values
+of the parameter (10m and 25m) which will produce two mapsets with the
+name assigned to the variant scenario ('10m' and '25m')
+and all the maps that dedpend on the varying parameter in each of them.
+
+```ruby
+GrassGis.session grass_config do
+  # First generate maps using fixed parameters and move them to PERMANENT
+  fixed_parameters = { mdt05_sheets: %w(0244 0282) }
+  fixed_data = primary = GrassCookbook::Data[
+    parameters: fixed_parameters.keys,
+    files: GrassCookbook.existing_external_input_files
+  ]
+  plan = GrassCookbook.plan(fixed_data)
+  permanent = plan.last
+  GrassCookbook.replace_existing_products self, plan
+  GrassCookbook.execute self, fixed_parameters, plan
+  permanent.maps.each do |map, type|
+    move_map(map, type: type, to: 'PERMANENT')
+  end
+
+  # Then define some variations of other parameters and create a mapset
+  # for each variation, where maps dependent on the varying parameters
+  # will be put
+  variants = {
+    '10m' => { resolution: 10 },
+    '25m' => { resolution: 25 }
+  }
+  for variant_name, variant_parameters in variants
+    data = GrassCookbook::Data[parameters: variant_parameters.keys] + permanent
+    plan = GrassCookbook.plan(data)
+    GrassCookbook.replace_existing_products self, plan
+    GrassCookbook.execute self, fixed_parameters.merge(variant_parameters), plan
+    variant_maps = (plan.last - data).maps
+    create_mapset variant_name
+    variant_maps.each do |map, type|
+      move_map(map, type: type, to: variant_name)
+    end
+  end
+end
+```
 
 ### Technicalities
 
@@ -535,149 +678,6 @@ GrassGis.session configuration do
   resamp_average self,
     input: 'aspect_hires',
     output: 'aspect_lowres', output_res: 10
-  end
-end
-```
-
-### Recipes
-
-The `GrassCookbook` interface can be used to define geoprocessing
-"recipes" which specify required and generated data.
-
-A recipe is defined by calling `GrassCookbook.recipe` with a block
-that provides the recipe definition in a declarative way, using
-methods such as `description`, `required_parameters`, `required_files`,
-`required_raster_maps`, `generated_rater_maps`, etc.
-
-The `process` method defines, with a block, the recipes's procedure.
-The arguments to this block will be taken auto-magically from parameters
-of the same name (parameters are provided to a recipe-executing environment
-through a Hash).
-
-The available `GrassCookbook` methods can be used to determine which recipes need
-to be executed, in which order, and which products will be generated
-based on available data.
-
-For example, given this three recipes:
-
-```ruby
-GrassCookbook.recipe :dem_base_from_mdt05 do
-  description %{
-    Generate a DEM for the location region at fixed 5m resolution
-    from CNIG's MDT05 data.
-  }
-
-  required_files 'data/MDT05'
-  generated_raster_maps 'dem_base'
-
-  process do |mdt05_sheets|
-    # Import MDT05 sheets and generate dem_base
-    mdt05_sheets = mdt05_sheets.map { |n| "MDT05-#{n}-H30-LIDAR.asc"}
-    sheet_maps = Hash[mdt05_sheets.map { |s| [s, File.basename(s, '.asc')]}]
-    mdt05_sheets.each do |sheet|
-      map = sheet_maps[sheet]
-      r.in.gdal '-o', '--overwrite',
-        input: File.join('data', 'MDT05', sheet),
-        output: map
-      r.colors map: map, color: 'elevation'
-    end
-    # Keep previous resolution
-    ewres, nsres = region_res
-    # Patch sheets and crop
-    g.region res: 5
-    r.patch input: sheet_maps.values, output: 'dem_base'
-    r.colors map: 'dem_base', color: 'elevation'
-    # Restore previous resolution
-    g.region nsres: nsres, ewres: ewres
-    g.remove '-f', type: 'raster', name: sheet_maps.values
-  end
-end
-
-GrassCookbook.recipe :dem_base_derived do
-  description %{
-    Generate DEM-derived maps from the 5m dem base:
-    slope, aspect and relief shading
-  }
-
-  required_raster_maps 'dem_base'
-  generated_raster_maps 'shade_base', 'slope_base', 'aspect_base'
-
-  process do
-    r.relief input: 'dem_base', output: 'shade_base'
-    r.slope.aspect elevation: 'dem_base',
-                   slope:     'slope_base',
-                   aspect:    'aspect_base'
-  end
-end
-
-GrassCookbook.recipe :working_dem do
-  description %{
-    Generate DEM data at working resolution
-  }
-
-  required_raster_maps 'dem_base', 'slope_base', 'aspect_base'
-  generated_raster_maps 'dem', 'slope', 'aspect'
-
-  process do |resolution|
-    # Keep previous resolution
-    ewres, nsres = region_res
-
-    resamp_average input: 'dem_base', output: 'dem', output_res: resolution
-    resamp_average input: 'slope_base', output: 'slope', output_res: resolution
-    resamp_average input: 'aspect_base', output: 'aspect', output_res: resolution
-
-    # Restore previous resolution
-    g.region nsres: nsres, ewres: ewres
-  end
-end
-```
-
-We could now use those recipes to compute some permanent base maps and
-alternative scenario mapsheets varying some parameter.
-
-In this example we fixed parameters defines the available data to create
-a base DEM at a resolution of 5, which will be kept in the PERMANENT
-mapset.
-
-Then we vary the `resolution` parameter to compute derived information
-(topography information at the given resolution) for two values
-of the parameter (10m and 25m) which will produce two mapsets with the
-name assigned to the variant scenario ('10m' and '25m')
-and all the maps that dedpend on the varying parameter in each of them.
-
-```ruby
-GrassGis.session grass_config do
-  # First generate maps using fixed parameters and move them to PERMANENT
-  fixed_parameters = { mdt05_sheets: %w(0244 0282) }
-  fixed_data = primary = GrassCookbook::Data[
-    parameters: fixed_parameters.keys,
-    files: GrassCookbook.existing_external_input_files
-  ]
-  plan = GrassCookbook.plan(fixed_data)
-  permanent = plan.last
-  GrassCookbook.replace_existing_products self, plan
-  GrassCookbook.execute self, fixed_parameters, plan
-  permanent.maps.each do |map, type|
-    move_map(map, type: type, to: 'PERMANENT')
-  end
-
-  # Then define some variations of other parameters and create a mapset
-  # for each variation, where maps dependent on the varying parameters
-  # will be put
-  variants = {
-    '10m' => { resolution: 10 },
-    '25m' => { resolution: 25 }
-  }
-  for variant_name, variant_parameters in variants
-    data = GrassCookbook::Data[parameters: variant_parameters.keys] + permanent
-    plan = GrassCookbook.plan(data)
-    GrassCookbook.replace_existing_products self, plan
-    GrassCookbook.execute self, fixed_parameters.merge(variant_parameters), plan
-    variant_maps = (plan.last - data).maps
-    create_mapset variant_name
-    variant_maps.each do |map, type|
-      move_map(map, type: type, to: variant_name)
-    end
   end
 end
 ```
