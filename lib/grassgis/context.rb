@@ -30,6 +30,7 @@ module GrassGis
       config[:echo] = :commands unless config.key?(:echo)
 
       @config = config
+      @tools = (config[:tools] == false) ? false : true
 
       locals = config[:locals] || {}
       locals.each do |var_name, value|
@@ -119,6 +120,7 @@ module GrassGis
       insert_path 'PATH', *paths
       insert_path 'MANPATH', File.join(@config[:gisbase], 'man')
       @history = []
+      extend GrassGis::Tools if @tools
     end
 
     def dispose
