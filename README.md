@@ -544,7 +544,17 @@ end
 The `GrassCookbook` interface can be used to define geoprocessing
 "recipes" which specify required and generated data.
 
-The available methods can be used to determine which recipes need
+A recipe is defined by calling `GrassCookbook.recipe` with a block
+that provides the recipe definition in a declarative way, using
+methods such as `description`, `required_parameters`, `required_files`,
+`required_raster_maps`, `generated_rater_maps`, etc.
+
+The `process` method defines, with a block, the recipes's procedure.
+The arguments to this block will be taken auto-magically from parameters
+of the same name (parameters are provided to a recipe-executing environment
+through a Hash).
+
+The available `GrassCookbook` methods can be used to determine which recipes need
 to be executed, in which order, and which products will be generated
 based on available data.
 
@@ -553,7 +563,7 @@ For example, given this three recipes:
 ```ruby
 GrassCookbook.recipe :dem_base_from_mdt05 do
   description %{
-    Generate a DEM for the interest area at fixed 5m resolution
+    Generate a DEM for the location region at fixed 5m resolution
     from CNIG's MDT05 data.
   }
 
@@ -631,7 +641,9 @@ mapset.
 
 Then we vary the `resolution` parameter to compute derived information
 (topography information at the given resolution) for two values
-of the parameter (10m and 25m):
+of the parameter (10m and 25m) which will produce two mapsets with the
+name assigned to the variant scenario ('10m' and '25m')
+and all the maps that dedpend on the varying parameter in each of them.
 
 ```ruby
 GrassGis.session grass_config do
@@ -653,8 +665,8 @@ GrassGis.session grass_config do
   # for each variation, where maps dependent on the varying parameters
   # will be put
   variants = {
-    '10m' => { resolucion: 10 },
-    '25m' => { resolucion: 25 }
+    '10m' => { resolution: 10 },
+    '25m' => { resolution: 25 }
   }
   for variant_name, variant_parameters in variants
     data = GrassCookbook::Data[parameters: variant_parameters.keys] + permanent
