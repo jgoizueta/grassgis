@@ -2,12 +2,6 @@ module GrassGis
   # Convenient shortcuts and tools for use in GRASS sessions
   # Currently only implemented for GRASS 7
   module Tools
-    def self.extended(base)
-      if base.grass_version < GrassGis.version('7.0.0')
-        raise "GrassTools not implemented for this version of GRASS"
-      end
-    end
-
     def map_exists?(map, options = {})
       types = Array(options[:type])
       types = 'all' if types.empty?
@@ -114,7 +108,12 @@ module GrassGis
       mapset = explicit_map_mapset(map) || options[:mapset] || map_mapset(map, type: type)
       raise "Map not found #{map} (#{type})" unless mapset
       with_mapset(mapset) do
-        g.remove '-f', type: type, name: map
+        if grass_version >= GrassGis.version('7.0.0')
+          g.remove '-f', type: type, name: map
+        else
+          param = { vector: 'vect', raster: 'rast', raster_3d: 'rast3d' }[type.to_sym]
+          g.remove '-f', param => map
+        end
       end
     end
 
@@ -139,7 +138,12 @@ module GrassGis
       if from_mapset != to_mapset
         original_map = "#{map}@#{from_mapset}"
         with_mapset to_mapset do
-          g.copy type => [original_map, map]
+          if grass_version >= GrassGis.version('7.0.0')
+            g.copy type => [original_map, map]
+          else
+            param = { vector: 'vect', raster: 'rast', raster_3d: 'rast3d' }[type.to_sym]
+            g.copy param => [original_map, map]
+          end
         end
         original_map
       end

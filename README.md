@@ -675,7 +675,6 @@ end
 * Change Module to define explicitly available GRASS commands instead of
   accepting anything with `method_missing`. Declare commands with permitted
   arguments and options, etc.
-* Add a version of GrassGis::Tools for GRASS 6.4
 * Add some session helpers:
   - Method to clean GRASS temporaries ($GISBASE/etc/clean_temp), or do
     it automatically when disposing the session.
