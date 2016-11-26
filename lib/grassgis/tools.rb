@@ -203,7 +203,7 @@ module GrassGis
         r.resamp.stats input: "#{input_raster}_cos", output: "#{output_raster}_cos"
         r.resamp.stats input: "#{input_raster}_sin", output: "#{output_raster}_sin"
         r.mapcalc "#{output_raster} = atan(#{output_raster}_cos,#{output_raster}_sin)"
-        r.colors map: ouput_raster, raster: input_raster
+        r.colors map: output_raster, raster: input_raster
         g.remove '-f', type: 'raster', name: ["#{output_raster}_cos", "#{output_raster}_sin"]
       else
         g.region ewres: output_res[0], nsres: output_res[1]
