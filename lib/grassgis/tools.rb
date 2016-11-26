@@ -24,7 +24,7 @@ module GrassGis
       map_exists? map, options.merge(type: 'rast')
     end
 
-    def vector_exists?(map)
+    def vector_exists?(map, options = {})
       map_exists? map, options.merge(type: 'vect')
     end
 
