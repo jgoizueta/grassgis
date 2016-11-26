@@ -270,14 +270,15 @@ where to record the commands executed and its output.
 ### Recipes
 
 The `GrassCookbook` interface can be used to define geoprocessing
-"recipes" which specify required and generated data.
+"recipes", each one specifying which data is required and
+produced by the process.
 
 A recipe is defined by calling `GrassCookbook.recipe` with a block
 that provides the recipe definition in a declarative way, using
 methods such as `description`, `required_parameters`, `required_files`,
 `required_raster_maps`, `generated_rater_maps`, etc.
 
-The `process` method defines, with a block, the recipes's procedure.
+The `process` method defines, by using a block, the recipes's procedure.
 The arguments to this block will be taken auto-magically from parameters
 of the same name (parameters are provided to a recipe-executing environment
 through a Hash).
@@ -361,17 +362,17 @@ end
 ```
 
 We could now use those recipes to compute some permanent base maps and
-alternative scenario mapsheets varying some parameter.
+then maps for alternative scenarios by varying some parameter.
 
-In this example we fixed parameters defines the available data to create
-a base DEM at a resolution of 5, which will be kept in the PERMANENT
-mapset.
+In this example the fixed parameter defines the available data
+we have to create a base DEM at a resolution of 5 meters,
+which will be kept in the PERMANENT mapset.
 
 Then we vary the `resolution` parameter to compute derived information
 (topography information at the given resolution) for two values
 of the parameter (10m and 25m) which will produce two mapsets with the
 name assigned to the variant scenario ('10m' and '25m')
-and all the maps that dedpend on the varying parameter in each of them.
+and all the maps that depend on the varying parameter in each of them.
 
 ```ruby
 GrassGis.session grass_config do
@@ -461,7 +462,7 @@ to execute any commands:
 @value = 10
 GrassGis.session configuration do |grass|
   puts @value # 10
-  grass.g.region res: 10 # now you need to use the object to issue commans
+  grass.g.region res: 10 # now you need to use the object to issue commands
 end
 ```
 
@@ -485,7 +486,7 @@ end
 #### Invalid commands
 
 Currently the generation of GRASS commands inside a session is
-implemented in a versy simple way which allows to generate any command
+implemented in a very simple way which allows to generate any command
 name even if it is invalid or does not exist. This has the advantage
 of supporting any version of GRASS, but doesn't allow for early
 detection of invalid commands (e.g. due to typos) or invalid command
@@ -493,7 +494,7 @@ parameters.
 
 ```ruby
 GrassGis.session configuration do |grass|
-  g.regoin res: 10     # Oops (runtime error)
+  g.region res: 10     # Oops (runtime error)
   g.anything.goes.run  # another runtime error
 end
 ```
@@ -503,14 +504,14 @@ occur.
 
 If the command exists, then if parameters are not valid, the command
 will execute but will return an error status. This will be handled
-as explaned above.
+as explained above.
 
 ## Helper methods
 
 When writing a non-trivial program you'll probably
 find you want to define methods to avoid unnecessary repetition.
 
-Let's see how you can call methdos from your session and be
+Let's see how you can call methods from your session and be
 able to execute GRASS commands from the method in the context of the session.
 
 Inside a session, `self` refers to an object of class
@@ -538,7 +539,7 @@ def helper_method(grass)
 end
 ```
 
-To avoid having to prepend each command with `grapss.` you can
+To avoid having to prepend each command with `grass.` you can
 use the `session` method like this:
 
 ```ruby
@@ -551,8 +552,27 @@ def helper_method(grass)
 end
 ```
 
+An alternative is to use a Ruby module and extend the session with it:
+
+```ruby
+module Helpers
+  def helper_method
+    g.region res: 10
+    g.region '-p'
+    puts output
+  end
+end
+
+GrassGis.session configuration do
+  extend Helpers
+  helper_method
+end
+```
+
 ### Examples
 
+Note: the functionality of these examples is now provided by
+a Tools module which is included by default in GrassGis sessions.
 
 #### 1. Map existence
 
