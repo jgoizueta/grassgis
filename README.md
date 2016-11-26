@@ -352,7 +352,7 @@ GrassCookbook.recipe :working_dem do
 
     resamp_average input: 'dem_base', output: 'dem', output_res: resolution
     resamp_average input: 'slope_base', output: 'slope', output_res: resolution
-    resamp_average input: 'aspect_base', output: 'aspect', output_res: resolution
+    resamp_average input: 'aspect_base', output: 'aspect', output_res: resolution, direction: true
 
     # Restore previous resolution
     g.region nsres: nsres, ewres: ewres

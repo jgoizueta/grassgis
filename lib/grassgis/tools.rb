@@ -191,11 +191,11 @@ module GrassGis
       output_raster = options[:output]
 
       if options[:direction]
-        unless raster_exists?(self, "#{input_raster}_sin")
+        unless raster_exists?("#{input_raster}_sin")
           g.region ewres: input_res[0], nsres: input_res[1]
           r.mapcalc "#{input_raster}_sin = sin(#{input_raster})"
         end
-        unless raster_exists?(self, "#{input_raster}_cos")
+        unless raster_exists?("#{input_raster}_cos")
           g.region ewres: input_res[0], nsres: input_res[1]
           r.mapcalc "#{input_raster}_cos = cos(#{input_raster})"
         end
